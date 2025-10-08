@@ -40,7 +40,6 @@ class CaptionService : Service() {
     private var audioRecord: AudioRecord? = null
     private val recording = AtomicBoolean(false)
     private val isReady = AtomicBoolean(false)
-    private val prepFailed = AtomicBoolean(false)
     private lateinit var asr: ASREngine
     private var lang = "en"
 
@@ -128,8 +127,6 @@ class CaptionService : Service() {
                 Log.i(TAG, "Starting async model preparation for lang=$lang")
                 status("⏳ Preparing model ($lang)… First run may take a minute")
 
-                prepFailed.set(false)
-
                 asr.init(lang) { msg ->
                     Log.d(TAG, "Model init progress: $msg")
                     status(msg)
@@ -140,11 +137,8 @@ class CaptionService : Service() {
                 status("✅ Model ready")
             } catch (e: Exception) {
                 Log.e(TAG, "Model init failed", e)
-                prepFailed.set(true)
-                status("❌ Model init failed: ${e.message ?: "unknown error"}. See README for model setup.")
+                status("❌ Model init failed: ${e.message}")
                 isReady.set(false)
-                recording.set(false)
-                stopAudio()
             } finally {
                 prepJob = null
             }
@@ -165,7 +159,7 @@ class CaptionService : Service() {
         val n: Notification = NotificationCompat.Builder(this, ch)
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .setContentTitle("Captions")
-            .setContentText("Starting…")
+            .setContentText("Active")
             .setOngoing(true)
             .build()
 
@@ -183,12 +177,6 @@ class CaptionService : Service() {
         job = scope.launch {
             // wait until model ready
             while (!isReady.get() && recording.get()) {
-                if (prepFailed.get()) {
-                    Log.w(TAG, "Model preparation failed; aborting recording loop")
-                    status("❌ Model unavailable. Install the Vosk model assets and retry.")
-                    recording.set(false)
-                    return@launch
-                }
                 status("⏳ Preparing model…")
                 delay(200)
             }
@@ -253,19 +241,22 @@ class CaptionService : Service() {
         status("🎙️ Listening")
         val bytes = ByteArray(buf)
         var frameCount = 0
+        var lastTranscript = ""
 
         while (recording.get()) {
             val n = rec.read(bytes, 0, bytes.size)
 
             if (n > 0) {
                 frameCount++
-                if (frameCount % 100 == 0) {
-                    Log.v(TAG, "Processed $frameCount audio frames")
-                }
 
-                asr.acceptPcm16(bytes, n)?.let { text ->
-                    Log.d(TAG, "Got transcript: $text")
-                    status(text)
+                // Get transcript from ASR
+                val transcript = asr.acceptPcm16(bytes, n)
+
+                // Only send updates when text changes (reduces UI churn)
+                if (transcript != null && transcript != lastTranscript) {
+                    Log.v(TAG, "Transcript: $transcript")
+                    lastTranscript = transcript
+                    status(transcript)
                 }
             } else if (n < 0) {
                 Log.w(TAG, "AudioRecord.read() returned error: $n")
@@ -290,7 +281,6 @@ class CaptionService : Service() {
     }
 
     private fun status(text: String) {
-        Log.d(TAG, "Status update: $text")
         sendBroadcast(Intent(ACTION_TRANSCRIPT_UPDATE).putExtra(EXTRA_TRANSCRIPT, text))
     }
 }

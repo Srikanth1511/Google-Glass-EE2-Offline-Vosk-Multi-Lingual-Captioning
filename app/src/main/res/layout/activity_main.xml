@@ -1,84 +1,100 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Glass EE2 optimized layout - content positioned in upper-right -->
+<!-- Glass EE2 fullscreen layout with continuous rolling captions -->
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/rootLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@android:color/black"
-    android:padding="16dp">
+    android:padding="12dp"
+    android:clickable="true"
+    android:focusable="true">
 
-    <!-- Status chips in top-right corner -->
+    <!-- Status chips in top row - all indicators -->
     <LinearLayout
         android:id="@+id/statusLayout"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
-        android:layout_alignParentEnd="true"
         android:orientation="horizontal"
-        android:layout_marginTop="8dp"
-        android:layout_marginEnd="8dp">
+        android:gravity="center_vertical"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp">
 
         <TextView
             android:id="@+id/languageChip"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@android:color/darker_gray"
+            android:background="#333333"
             android:textColor="@android:color/white"
-            android:textSize="14sp"
-            android:padding="6dp"
-            android:layout_marginEnd="4dp"
+            android:textSize="11sp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:layout_marginEnd="6dp"
             android:text="EN" />
 
         <TextView
             android:id="@+id/recStateChip"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@android:color/darker_gray"
+            android:background="#333333"
             android:textColor="@android:color/white"
-            android:textSize="14sp"
-            android:padding="6dp"
-            android:layout_marginEnd="4dp"
+            android:textSize="11sp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:layout_marginEnd="6dp"
             android:text="READY" />
 
         <TextView
             android:id="@+id/batteryChip"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@android:color/darker_gray"
+            android:background="#333333"
             android:textColor="@android:color/white"
-            android:textSize="14sp"
-            android:padding="6dp"
+            android:textSize="11sp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
             android:text="--%" />
+
+        <!-- Spacer -->
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/helpText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#666666"
+            android:textSize="9sp"
+            android:text="Tap: start/pause • Hold: stop" />
     </LinearLayout>
 
-    <!-- Caption text positioned in upper portion, aligned to right -->
-    <TextView
-        android:id="@+id/captionTextView"
+    <!-- Continuous rolling caption display - LEFT aligned, fills screen -->
+    <ScrollView
+        android:id="@+id/captionScroll"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:layout_below="@id/statusLayout"
-        android:layout_marginTop="24dp"
-        android:layout_marginEnd="8dp"
-        android:layout_marginStart="40dp"
-        android:background="@android:color/transparent"
-        android:textColor="@android:color/white"
-        android:textSize="20sp"
-        android:lineSpacingExtra="4dp"
-        android:gravity="end"
-        android:maxLines="3"
-        android:ellipsize="end"
-        android:text="Tap to start captioning" />
+        android:layout_marginTop="8dp"
+        android:scrollbars="none"
+        android:fadeScrollbars="true">
 
-    <!-- Help text at bottom -->
-    <TextView
-        android:id="@+id/helpText"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_alignParentEnd="true"
-        android:layout_marginBottom="8dp"
-        android:layout_marginEnd="8dp"
-        android:textColor="#80FFFFFF"
-        android:textSize="12sp"
-        android:text="Tap: start/pause • Long-press: stop" />
+        <TextView
+            android:id="@+id/captionTextView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@android:color/white"
+            android:textSize="20sp"
+            android:lineSpacingExtra="4dp"
+            android:gravity="start|top"
+            android:text="Tap to start captioning..." />
+    </ScrollView>
 
 </RelativeLayout>

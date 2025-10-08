@@ -12,8 +12,12 @@ import android.os.Bundle
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.GestureDetector
 import android.view.MotionEvent
+import android.view.View
+import android.view.WindowManager
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -35,6 +39,7 @@ class MainActivity :
     private var isRecording = false
 
     private lateinit var captionTextView: TextView
+    private lateinit var captionScroll: ScrollView
     private lateinit var recStateChip: TextView
     private lateinit var languageChip: TextView
     private lateinit var batteryChip: TextView
@@ -43,17 +48,50 @@ class MainActivity :
     private val REQ_AUDIO = 1001
     private val batteryHandler = Handler(Looper.getMainLooper())
 
+    // For rolling transcription
+    private var lastPartialText = ""
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Make fullscreen - hide notification bar and navigation
+        makeFullscreen()
+
         setContentView(R.layout.activity_main)
 
         captionTextView = findViewById(R.id.captionTextView)
-        recStateChip     = findViewById(R.id.recStateChip)
-        languageChip     = findViewById(R.id.languageChip)
-        batteryChip      = findViewById(R.id.batteryChip)
+        captionScroll = findViewById(R.id.captionScroll)
+        recStateChip = findViewById(R.id.recStateChip)
+        languageChip = findViewById(R.id.languageChip)
+        batteryChip = findViewById(R.id.batteryChip)
 
         gestureDetector = GestureDetector(this, this).apply {
             setOnDoubleTapListener(this@MainActivity)
+        }
+
+        // Make root layout handle touches
+        val rootLayout = findViewById<View>(R.id.rootLayout)
+        rootLayout.setOnTouchListener { _, event ->
+            gestureDetector.onTouchEvent(event)
+        }
+
+        // Make ScrollView pass touch events to Activity
+        captionScroll.setOnTouchListener { _, event ->
+            gestureDetector.onTouchEvent(event)
+            false // Return false to allow scrolling to still work
+        }
+
+        // Make caption text view also handle touches
+        captionTextView.setOnTouchListener { _, event ->
+            gestureDetector.onTouchEvent(event)
+            false
+        }
+
+        // Also add click listener to status bar as backup
+        val statusLayout = findViewById<View>(R.id.statusLayout)
+        statusLayout.setOnClickListener {
+            Log.d("MainActivity", "Status bar clicked!")
+            if (isRecording) pauseCaptions() else startCaptions()
         }
 
         // Listen for transcript updates
@@ -64,6 +102,36 @@ class MainActivity :
 
         // Start battery monitoring
         startBatteryMonitoring()
+    }
+
+    private fun makeFullscreen() {
+        // Hide notification bar
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_FULLSCREEN,
+            WindowManager.LayoutParams.FLAG_FULLSCREEN
+        )
+
+        // Hide navigation bar and make immersive
+        if (Build.VERSION.SDK_INT >= 19) {
+            window.decorView.systemUiVisibility = (
+                    View.SYSTEM_UI_FLAG_FULLSCREEN
+                            or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                            or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                            or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                            or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                            or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                    )
+        }
+
+        // Remove action bar
+        supportActionBar?.hide()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            makeFullscreen() // Re-apply when user returns to app
+        }
     }
 
     private fun ensureMicPermission(): Boolean {
@@ -103,15 +171,35 @@ class MainActivity :
         override fun onReceive(context: Context?, intent: Intent?) {
             val text = intent?.getStringExtra(CaptionService.EXTRA_TRANSCRIPT) ?: return
 
-            // Update UI
-            captionTextView.text = text
+            // Skip status messages
+            if (text.startsWith("⏳") || text.startsWith("✅") ||
+                text.startsWith("❌") || text.startsWith("🎙️") ||
+                text.startsWith("⏸️") || text.startsWith("⏹️")) {
+                return
+            }
 
-            // Append to transcript if recording
+            // Continuous rolling transcription
             if (isRecording && text.isNotBlank()) {
-                // Only add text that looks like actual captions (not status messages)
-                if (!text.startsWith("⏳") && !text.startsWith("✅") &&
-                    !text.startsWith("❌") && !text.startsWith("🎙️")) {
+                // If text is different from last partial, it's a new/updated phrase
+                if (text != lastPartialText) {
+                    // Remove the last partial text and add the new one
+                    if (lastPartialText.isNotEmpty() && currentTranscript.endsWith(lastPartialText)) {
+                        // Remove last partial
+                        val len = lastPartialText.length
+                        currentTranscript.delete(currentTranscript.length - len, currentTranscript.length)
+                    }
+
+                    // Add new text
                     currentTranscript.append(text).append(" ")
+                    lastPartialText = text
+
+                    // Update display
+                    captionTextView.text = currentTranscript.toString()
+
+                    // Auto-scroll to bottom
+                    captionScroll.post {
+                        captionScroll.fullScroll(ScrollView.FOCUS_DOWN)
+                    }
                 }
             }
         }
@@ -128,8 +216,16 @@ class MainActivity :
 
     // --- Gestures ---
     override fun onSingleTapUp(e: MotionEvent?): Boolean {
+        Log.d("MainActivity", "Single tap detected!")
         if (!ensureMicPermission()) return true
-        if (isRecording) pauseCaptions() else startCaptions()
+
+        if (isRecording) {
+            Log.d("MainActivity", "Pausing captions")
+            pauseCaptions()
+        } else {
+            Log.d("MainActivity", "Starting captions")
+            startCaptions()
+        }
         return true
     }
 
@@ -159,33 +255,41 @@ class MainActivity :
 
     // --- Caption control ---
     private fun startCaptions() {
+        Log.d("MainActivity", "startCaptions() called")
         val i = Intent(this, CaptionService::class.java)
             .setAction(CaptionService.ACTION_START)
         if (Build.VERSION.SDK_INT >= 26) startForegroundService(i) else startService(i)
         isRecording = true
         recStateChip.text = "REC"
-        captionTextView.text = "Preparing model…"
+        Log.d("MainActivity", "Set chip to REC, isRecording=$isRecording")
+        captionTextView.text = "" // Clear on start
+        currentTranscript.clear()
+        lastPartialText = ""
     }
 
     private fun pauseCaptions() {
+        Log.d("MainActivity", "pauseCaptions() called")
         val i = Intent(this, CaptionService::class.java).setAction(CaptionService.ACTION_PAUSE)
         startService(i)
         isRecording = false
         recStateChip.text = "PAUSED"
+        Log.d("MainActivity", "Set chip to PAUSED, isRecording=$isRecording")
     }
 
     private fun stopCaptions() {
+        Log.d("MainActivity", "stopCaptions() called")
         val i = Intent(this, CaptionService::class.java).setAction(CaptionService.ACTION_STOP)
         startService(i)
         isRecording = false
         recStateChip.text = "READY"
+        Log.d("MainActivity", "Set chip to READY, isRecording=$isRecording")
     }
 
     private fun saveTranscript() {
         if (currentTranscript.isEmpty()) return
 
         try {
-            // Use app-specific external directory (no WRITE_EXTERNAL_STORAGE needed on API 19+)
+            // Use app-specific external directory (no WRITE_EXTERNAL_STORAGE needed)
             val dir = getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)
                 ?: File(filesDir, "transcripts")
 
@@ -197,7 +301,6 @@ class MainActivity :
             file.writeText(currentTranscript.toString().trim())
 
             Toast.makeText(this, "Saved: ${file.name}", Toast.LENGTH_SHORT).show()
-            currentTranscript.clear()
         } catch (e: Exception) {
             Toast.makeText(this, "Save failed: ${e.message}", Toast.LENGTH_SHORT).show()
         }

@@ -114,10 +114,18 @@ class ASREngine(private val context: Context) {
             val isFinal = rec.acceptWaveForm(bytes, len)
             val json = if (isFinal) rec.result else rec.partialResult
             val j = JSONObject(json)
-            val text = j.optString("text", j.optString("partial", ""))
-            if (text.isNotBlank()) {
-                Log.v(TAG, "Recognized: $text (final=$isFinal)")
+
+            // For continuous transcription, always return the latest text
+            val text = if (isFinal) {
+                j.optString("text", "")
+            } else {
+                j.optString("partial", "")
             }
+
+            if (text.isNotBlank()) {
+                Log.v(TAG, "Recognized: '$text' (final=$isFinal)")
+            }
+
             return text.takeIf { it.isNotBlank() }
         } catch (e: Exception) {
             Log.e(TAG, "Error in acceptPcm16", e)
