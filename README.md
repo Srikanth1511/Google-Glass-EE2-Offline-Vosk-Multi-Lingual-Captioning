@@ -12,8 +12,10 @@ user‑interface polish need to be implemented.
 
 * **Offline speech recognition** – no Internet permission is requested.  The
   native ASR engine is assumed to run entirely on device.  Models for
-  **English** (`en`) and **Japanese** (`ja`) are bundled with the APK under
-  `assets/models/` and copied into app‑private storage on first launch.
+  **English** (`en`) and **Japanese** (`ja`) must be supplied under
+  `app/src/main/assets/models/` and are copied into app‑private storage on
+  first launch.  The repository only contains placeholder directories to keep
+  the download size reasonable.
 * **Continuous captions** – audio is captured from the Glass microphone, fed
   into the ASR engine and partial transcripts are rendered as a single
   rolling line of text.  Sessions can be started, paused and stopped with
@@ -65,8 +67,13 @@ your chosen ASR library.
 2. Open the project in **Android Studio**.  When prompted, install missing
    SDK components.
 3. Connect your Glass EE2 device via USB and enable USB debugging.
-4. Build and run the `app` module.  The first launch will copy the bundled
-   models into `filesDir/models/en` and `filesDir/models/ja`.
+4. Download the required [Vosk offline models](https://alphacephei.com/vosk/models)
+   (for example `vosk-model-small-en-us-0.15` for English and
+   `vosk-model-small-ja-0.22` for Japanese).  Extract each archive directly
+   into `app/src/main/assets/models/<lang>/` so that files like `am/final.mdl`
+   live immediately under that folder (i.e. no extra nested directory).
+5. Build and run the `app` module.  The first launch will copy the models into
+   `filesDir/models/en` and `filesDir/models/ja`.
 
 ## Notes
 
@@ -80,3 +87,5 @@ your chosen ASR library.
   (< 500 ms end‑to‑caption latency).
 * When exporting transcripts, the `.txt` file is mandatory; generating `.srt`
   or `.vtt` files for subtitle formats is optional but recommended.
+* If the UI remains on “Preparing model…” ensure that the Vosk model assets are
+  present in the locations described above and relaunch the service.

@@ -40,6 +40,7 @@ class CaptionService : Service() {
     private var audioRecord: AudioRecord? = null
     private val recording = AtomicBoolean(false)
     private val isReady = AtomicBoolean(false)
+    private val prepFailed = AtomicBoolean(false)
     private lateinit var asr: ASREngine
     private var lang = "en"
 
@@ -127,6 +128,8 @@ class CaptionService : Service() {
                 Log.i(TAG, "Starting async model preparation for lang=$lang")
                 status("⏳ Preparing model ($lang)… First run may take a minute")
 
+                prepFailed.set(false)
+
                 asr.init(lang) { msg ->
                     Log.d(TAG, "Model init progress: $msg")
                     status(msg)
@@ -137,8 +140,11 @@ class CaptionService : Service() {
                 status("✅ Model ready")
             } catch (e: Exception) {
                 Log.e(TAG, "Model init failed", e)
-                status("❌ Model init failed: ${e.message}")
+                prepFailed.set(true)
+                status("❌ Model init failed: ${e.message ?: "unknown error"}. See README for model setup.")
                 isReady.set(false)
+                recording.set(false)
+                stopAudio()
             } finally {
                 prepJob = null
             }
@@ -177,6 +183,12 @@ class CaptionService : Service() {
         job = scope.launch {
             // wait until model ready
             while (!isReady.get() && recording.get()) {
+                if (prepFailed.get()) {
+                    Log.w(TAG, "Model preparation failed; aborting recording loop")
+                    status("❌ Model unavailable. Install the Vosk model assets and retry.")
+                    recording.set(false)
+                    return@launch
+                }
                 status("⏳ Preparing model…")
                 delay(200)
             }
