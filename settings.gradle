@@ -1,0 +1,2 @@
+rootProject.name = "Google-Glass-EE2-Offline-Captioning"
+include(":app")
