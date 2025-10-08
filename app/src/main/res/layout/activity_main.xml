@@ -1,29 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical"
+<!-- Glass EE2 optimized layout - content positioned in upper-right -->
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:gravity="center"
-    android:background="@android:color/black">
+    android:background="@android:color/black"
+    android:padding="16dp">
 
-    <!-- Continuous caption display. White text on black pill. -->
-    <TextView
-        android:id="@+id/captionTextView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:background="@android:color/black"
-        android:textColor="@android:color/white"
-        android:textSize="18sp"
-        android:padding="8dp"
-        android:text="" />
-
-    <!-- Placeholder for status chips (language, recording state, battery). -->
+    <!-- Status chips in top-right corner -->
     <LinearLayout
         android:id="@+id/statusLayout"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
         android:orientation="horizontal"
-        android:layout_marginTop="8dp">
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="8dp">
 
         <TextView
             android:id="@+id/languageChip"
@@ -31,8 +23,9 @@
             android:layout_height="wrap_content"
             android:background="@android:color/darker_gray"
             android:textColor="@android:color/white"
-            android:textSize="12sp"
-            android:padding="4dp"
+            android:textSize="14sp"
+            android:padding="6dp"
+            android:layout_marginEnd="4dp"
             android:text="EN" />
 
         <TextView
@@ -41,9 +34,10 @@
             android:layout_height="wrap_content"
             android:background="@android:color/darker_gray"
             android:textColor="@android:color/white"
-            android:textSize="12sp"
-            android:padding="4dp"
-            android:text="PAUSED" />
+            android:textSize="14sp"
+            android:padding="6dp"
+            android:layout_marginEnd="4dp"
+            android:text="READY" />
 
         <TextView
             android:id="@+id/batteryChip"
@@ -51,9 +45,40 @@
             android:layout_height="wrap_content"
             android:background="@android:color/darker_gray"
             android:textColor="@android:color/white"
-            android:textSize="12sp"
-            android:padding="4dp"
-            android:text="100%" />
+            android:textSize="14sp"
+            android:padding="6dp"
+            android:text="--%" />
     </LinearLayout>
 
-</LinearLayout>
+    <!-- Caption text positioned in upper portion, aligned to right -->
+    <TextView
+        android:id="@+id/captionTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/statusLayout"
+        android:layout_marginTop="24dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginStart="40dp"
+        android:background="@android:color/transparent"
+        android:textColor="@android:color/white"
+        android:textSize="20sp"
+        android:lineSpacingExtra="4dp"
+        android:gravity="end"
+        android:maxLines="3"
+        android:ellipsize="end"
+        android:text="Tap to start captioning" />
+
+    <!-- Help text at bottom -->
+    <TextView
+        android:id="@+id/helpText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentEnd="true"
+        android:layout_marginBottom="8dp"
+        android:layout_marginEnd="8dp"
+        android:textColor="#80FFFFFF"
+        android:textSize="12sp"
+        android:text="Tap: start/pause • Long-press: stop" />
+
+</RelativeLayout>
